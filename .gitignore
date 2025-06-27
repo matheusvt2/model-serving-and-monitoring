@@ -2,6 +2,17 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.devcontainer
+
+# Local Volumes
+monitoring/grafana/grafana.db
+monitoring/grafana/plugins
+monitoring/_state
+monitoring/indices
+monitoring/snapshot_cache
+monitoring/node*
+versioning/minio_data
+versioning/.minio.sys
 
 # C extensions
 *.so
@@ -128,7 +139,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+# .env
 .venv
 env/
 venv/

@@ -1,0 +1,235 @@
+services:
+  # Modeling service for training and model management
+  # modeling:
+  #   build:
+  #     context: ./modeling
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - ./modeling:/app
+  #   environment:
+  #     - MLFLOW_TRACKING_URI=http://mlflow:${MLFLOW_PORT}
+  #     - MLFLOW_S3_ENDPOINT_URL=http://minio:${MINIO_PORT}
+  #     - AWS_ACCESS_KEY_ID=${MINIO_ACCESS_KEY}
+  #     - AWS_SECRET_ACCESS_KEY=${MINIO_SECRET_ACCESS_KEY}
+  #   depends_on:
+  #     - mlflow
+  #     - minio
+  #   networks:
+  #     - mlnet
+
+  db:
+    image: postgres:17
+    container_name: mlflow_db
+    restart: always
+    expose:
+      - "${PG_PORT}"
+    environment:
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASSWORD}
+      - POSTGRES_DB=${PG_DATABASE}
+    volumes:
+      - ./versioning/db_data:/var/lib/postgresql/data/
+    networks:
+      - mlnet
+    healthcheck:
+      test: ["CMD", "pg_isready", "-p", "${PG_PORT}", "-U", "${PG_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  # MLflow tracking server
+  mlflow:
+    build:
+      context: ./versioning
+      dockerfile: mlflow.Dockerfile
+    container_name: mlflow_server
+    restart: always
+    depends_on:
+      - minio
+      - db
+    ports:
+      - "${MLFLOW_PORT}:5000"
+    networks:
+      - mlnet
+    environment:
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:${MINIO_PORT}
+      - MLFLOW_S3_IGNORE_TLS=true
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://${PG_USER}:${PG_PASSWORD}@db:${PG_PORT}/${PG_DATABASE}
+      --host 0.0.0.0
+      --serve-artifacts
+      --artifacts-destination s3://${MLFLOW_BUCKET_NAME}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${MLFLOW_PORT}/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MinIO for S3-compatible object storage
+  minio:
+    image: minio/minio:RELEASE.2025-06-13T11-33-47Z
+    container_name: mlflow_minio
+    restart: always
+    volumes:
+      - ./versioning/minio_data:/data
+    ports:
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    networks:
+      - mlnet
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_ADDRESS=${MINIO_ADDRESS}
+      - MINIO_PORT=${MINIO_PORT}
+      - MINIO_STORAGE_USE_HTTPS=${MINIO_STORAGE_USE_HTTPS}
+      - MINIO_CONSOLE_ADDRESS=${MINIO_CONSOLE_ADDRESS}
+    command: server /data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Elasticsearch for monitoring
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.18.0 
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "${ELASTICSEARCH_PORT}:9200"
+    volumes:
+      - ./monitoring:/usr/share/elasticsearch/data
+    networks:
+      - mlnet
+
+  # Kafka (using Bitnami images for simplicity)
+  zookeeper:
+    image: bitnami/zookeeper:3.9.3
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "${ZOOKEEPER_PORT}:2181"
+    networks:
+      - mlnet
+
+  kafka:
+    image: bitnami/kafka:3.6.1
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "${KAFKA_PORT}:9092"
+    depends_on:
+      - zookeeper
+    networks:
+      - mlnet
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - mlnet
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:12.0.2
+    ports:
+      - "${GRAFANA_PORT}:3000"
+    volumes:
+      - ./monitoring/grafana:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+    depends_on:
+      - prometheus
+      - elasticsearch
+    networks:
+      - mlnet
+
+  # Streaming service (Kafka Connect for ES sink)
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:latest
+    environment:
+      - CONNECT_BOOTSTRAP_SERVERS=kafka:9092
+      - CONNECT_REST_ADVERTISED_HOST_NAME=kafka-connect
+      - CONNECT_GROUP_ID=compose-connect-group
+      - CONNECT_CONFIG_STORAGE_TOPIC=docker-connect-configs
+      - CONNECT_OFFSET_STORAGE_TOPIC=docker-connect-offsets
+      - CONNECT_STATUS_STORAGE_TOPIC=docker-connect-status
+      - CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_PLUGIN_PATH=/usr/share/java
+      - CONNECT_LOG4J_LOGGERS=org.apache.zookeeper=ERROR,org.I0Itec.zkclient=ERROR,org.reflections=ERROR
+      - CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1
+      - CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1
+    depends_on:
+      - kafka
+      - elasticsearch
+    networks:
+      - mlnet
+    volumes:
+      - ./communication:/etc/kafka-connect
+
+  # Flask model serving service
+  serving:
+    build:
+      context: ./serving
+      dockerfile: Dockerfile
+    ports:
+      - "${SERVING_PORT}:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MODEL_PROD_NAME=RandomForestClassifier
+      - MODEL_SHADOW_NAME=RobustRandomForestClassifier
+      - KAFKA_BROKER=kafka:9092
+      - PROMETHEUS_MULTIPROC_DIR=/tmp
+      - LOG_LEVEL=${LOG_LEVEL}
+      - KAFKA_TOPIC=${KAFKA_TOPIC}
+    volumes:
+      - ./serving:/app
+      - ./modeling/model:/app/model
+    depends_on:
+      - mlflow
+      - kafka
+      - prometheus
+      - elasticsearch
+    networks:
+      - mlnet
+
+  streaming:
+    build:
+      context: ./communication
+      dockerfile: Dockerfile
+    depends_on:
+      - kafka
+      - elasticsearch
+    networks:
+      - mlnet
+    volumes:
+      - ./communication:/app
+    environment:
+      - KAFKA_BROKER=${KAFKA_BROKER}
+      - KAFKA_TOPIC=${KAFKA_TOPIC}
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST}
+      - ES_INDEX=${ES_INDEX}
+      - LOG_LEVEL=${LOG_LEVEL}
+
+networks:
+  mlnet:
+    driver: bridge
