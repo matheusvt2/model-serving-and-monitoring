@@ -8,8 +8,8 @@ Welcome to the Model Serving and Monitoring Platform! This guide will help you u
 
 Before you start, make sure your system meets the following minimum requirements:
 
-- **Operating System:** Linux (tested on 6.12.10-76061203-generic)
-- **Memory:** 8 GB RAM (minimum)
+- **Operating System:** Linux/Unix
+- **Memory:** 16 GB RAM (minimum)
 - **CPU:** 4 CPU cores (minimum)
 - **Disk:** 10 GB free space recommended
 - **Docker:** [Install Docker](https://docs.docker.com/get-docker/)
@@ -25,6 +25,7 @@ Before you start, make sure your system meets the following minimum requirements
 Below, each service is explained in detail, including its role, how it connects to others, and why it matters in the pipeline.
 
 ### 1. **MLflow**
+
 - **Role:** Model tracking, versioning, and registry.
 - **How it connects:**
   - Stores model artifacts in **MinIO** (S3-compatible storage).
@@ -33,6 +34,7 @@ Below, each service is explained in detail, including its role, how it connects 
 - **Why:** Enables reproducibility, model management, and easy deployment of new versions.
 
 ### 2. **MinIO**
+
 - **Role:** S3-compatible object storage for model artifacts.
 - **How it connects:**
   - Receives model files from **MLflow**.
@@ -40,12 +42,14 @@ Below, each service is explained in detail, including its role, how it connects 
 - **Why:** Decouples storage from compute, supports large files, and is cloud-native.
 
 ### 3. **Postgres**
+
 - **Role:** Database for MLflow experiment metadata (runs, parameters, metrics).
 - **How it connects:**
   - Used by **MLflow** as its backend store.
 - **Why:** Ensures reliable, queryable storage of experiment history.
 
 ### 4. **Kafka**
+
 - **Role:** Event streaming platform for prediction events.
 - **How it connects:**
   - The **Serving API** sends every prediction (input, output, metadata) as an event to Kafka.
@@ -53,6 +57,7 @@ Below, each service is explained in detail, including its role, how it connects 
 - **Why:** Decouples event production and consumption, enables real-time analytics and monitoring.
 
 ### 5. **Kafka Connect**
+
 - **Role:** Integration tool for moving data between Kafka and other systems.
 - **How it connects:**
   - Reads prediction events from **Kafka**.
@@ -60,6 +65,7 @@ Below, each service is explained in detail, including its role, how it connects 
 - **Why:** Automates data movement, supports scalable pipelines.
 
 ### 6. **Elasticsearch**
+
 - **Role:** Search and analytics engine for prediction events.
 - **How it connects:**
   - Receives events from **Kafka Connect** or the streaming service.
@@ -67,6 +73,7 @@ Below, each service is explained in detail, including its role, how it connects 
 - **Why:** Enables fast search, filtering, and aggregation of prediction logs.
 
 ### 7. **Prometheus**
+
 - **Role:** Metrics collection and monitoring system.
 - **How it connects:**
   - Scrapes metrics from the **Serving API** (e.g., prediction latency, CPU, memory).
@@ -74,6 +81,7 @@ Below, each service is explained in detail, including its role, how it connects 
 - **Why:** Provides observability into system and model performance.
 
 ### 8. **Grafana**
+
 - **Role:** Visualization and dashboarding tool.
 - **How it connects:**
   - Connects to **Prometheus** for metrics and **Elasticsearch** for event data.
@@ -81,6 +89,7 @@ Below, each service is explained in detail, including its role, how it connects 
 - **Why:** Makes monitoring actionable and accessible for all stakeholders.
 
 ### 9. **FastAPI Serving API**
+
 - **Role:** Serves ML model predictions via a REST API.
 - **How it connects:**
   - Loads models from **MLflow** (artifacts in **MinIO**).
@@ -109,8 +118,6 @@ Below, each service is explained in detail, including its role, how it connects 
 
 ## 📈 Why Collect Metrics and Predictions?
 
-> **As your teacher, let me explain why this is crucial for modern ML systems:**
-
 - **Metrics (latency, CPU, memory, error rates):**
   - Help you detect performance bottlenecks, resource leaks, and outages.
   - Allow you to set up alerts for abnormal behavior (e.g., slow predictions, high memory usage).
@@ -134,4 +141,4 @@ Below, each service is explained in detail, including its role, how it connects 
 - Follow the README for setup and usage instructions.
 - Explore the dashboards in Grafana to see your pipeline in action!
 
-If you have questions, reach out to the project maintainer or check the documentation links in the README. 
+If you have questions, reach out to the project maintainer or check the documentation links in the README.

@@ -3,7 +3,7 @@ import os
 import logging
 import time
 import uuid
-from fastapi import FastAPI, APIRouter, status, Response, HTTPException
+from fastapi import FastAPI, APIRouter, status, Response, HTTPException, BackgroundTasks
 from models import IrisInput, IrisPrediction, ErrorResponse, HealthResponse
 import mlflow.pyfunc
 import mlflow
@@ -64,15 +64,27 @@ except Exception as e:
     model_shadow = None
     shadow_version = "unknown"
 
-app = FastAPI()
+# Initialize FastAPI application and router
+app = FastAPI(
+    title="ML Model Serving API",
+    description="API for serving ML models with production and shadow deployments",
+    version="1.0.0"
+)
 router = APIRouter()
 
 # ThreadPoolExecutor for model inference
 executor = ThreadPoolExecutor(max_workers=4)
 
 async def predict_async(model, iris_input):
+    """Run model prediction asynchronously using ThreadPoolExecutor."""
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(executor, predict_with_model, model, iris_input)
+
+async def send_kafka_events(KAFKA_TOPIC, KAFKA_BROKER, event_prod, event_shadow=None):
+    """Send production and shadow model events to Kafka asynchronously."""
+    await send_to_kafka(KAFKA_TOPIC, event_prod, KAFKA_BROKER)
+    if event_shadow:
+        await send_to_kafka(KAFKA_TOPIC, event_shadow, KAFKA_BROKER)
 
 @router.get(
     "/health",
@@ -101,7 +113,8 @@ async def health_check():
 )
 async def predict(
     iris_input: IrisInput,
-    response: Response
+    response: Response,
+    background_tasks: BackgroundTasks
 ):
     """Predict the iris species from input features using both production and shadow models, log metrics, and stream events to Kafka."""
     logger.info(f"Received prediction request with input: {iris_input}")
@@ -117,7 +130,7 @@ async def predict(
         shadow_result = await predict_async(model_shadow, iris_input)
     else:
         shadow_result = None
-    # --- Send Events to Kafka ---
+    # --- Send Events to Kafka (in background) ---
     event_common = {
         "@timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "input": iris_input.model_dump(),
@@ -135,8 +148,7 @@ async def predict(
         "duration": prod_result["duration"]
     }
     logger.debug(f"Production event created: {event_prod}")
-    await send_to_kafka(KAFKA_TOPIC, event_prod, KAFKA_BROKER)
-    # Shadow event
+    event_shadow = None
     if shadow_available and shadow_result and not shadow_result["error"]:
         logger.debug(f"Creating shadow event with result: {shadow_result}")
         event_shadow = {
@@ -149,7 +161,10 @@ async def predict(
             "duration": shadow_result["duration"]
         }
         logger.debug(f"Shadow event created: {event_shadow}")
-        await send_to_kafka(KAFKA_TOPIC, event_shadow, KAFKA_BROKER)
+    # Schedule Kafka sending in background
+    background_tasks.add_task(
+        lambda: asyncio.run(send_kafka_events(KAFKA_TOPIC, KAFKA_BROKER, event_prod, event_shadow))
+    )
     # --- Prometheus Metrics ---
     try:
         process = psutil.Process(os.getpid())
@@ -165,6 +180,8 @@ async def predict(
     logger.info("Prediction endpoint completed successfully.")
     return prod_result["result"]
 
+# Include the prediction router in the FastAPI app
 app.include_router(router)
 
+# Initialize Prometheus metrics instrumentation
 Instrumentator().instrument(app).expose(app)

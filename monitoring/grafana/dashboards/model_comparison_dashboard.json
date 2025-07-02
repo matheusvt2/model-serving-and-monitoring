@@ -97,7 +97,7 @@
               "field": "@timestamp",
               "id": "6",
               "settings": {
-                "interval": "10m",
+                "interval": "20m",
                 "min_doc_count": "1",
                 "timeZone": "utc",
                 "trimEdges": "0"
@@ -141,6 +141,7 @@
             "axisGridShow": true,
             "axisLabel": "",
             "axisPlacement": "auto",
+            "axisSoftMax": 0.05,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -156,7 +157,7 @@
             "lineStyle": {
               "fill": "solid"
             },
-            "lineWidth": 1,
+            "lineWidth": 3,
             "pointSize": 8,
             "scaleDistribution": {
               "type": "linear"
@@ -180,7 +181,7 @@
               },
               {
                 "color": "red",
-                "value": 0.009
+                "value": 0.1
               }
             ]
           },
@@ -228,7 +229,7 @@
               "field": "@timestamp",
               "id": "3",
               "settings": {
-                "interval": "5m",
+                "interval": "auto",
                 "min_doc_count": "0",
                 "timeZone": "utc",
                 "trimEdges": "0"
@@ -343,7 +344,7 @@
               "field": "@timestamp",
               "id": "2",
               "settings": {
-                "interval": "5m",
+                "interval": "auto",
                 "min_doc_count": "1",
                 "timeZone": "utc",
                 "trimEdges": "0"
@@ -531,7 +532,7 @@
               }
             ]
           },
-          "unit": "bytes"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -782,12 +783,12 @@
     "list": []
   },
   "time": {
-    "from": "2025-06-27T14:28:48.175Z",
-    "to": "2025-06-27T23:00:01.388Z"
+    "from": "now-15m",
+    "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Model Production vs Shadow Comparison",
   "uid": "8cfb07cf-a05f-4e51-af9a-e5f79f8be8e2",
-  "version": 26
+  "version": 34
 }

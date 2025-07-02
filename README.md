@@ -19,8 +19,6 @@ This project demonstrates best practices for MLOps using Docker Compose, MLflow,
 - All services run in Docker containers and communicate on a shared network.
 - All configuration and persistent data are stored in versioned folders and mounted as volumes.
 - All sensitive/configurable values are managed via a `.env` file.
-- Logging uses appropriate levels and is in English.
-- All code and documentation are in English.
 
 ---
 
@@ -63,17 +61,6 @@ graph TD
 
 ---
 
-## ✅ Component Checklist
-
-- [x] **Model**: Training notebook and pipeline (`modeling/`)
-- [x] **Containerization**: Dockerfiles for all services
-- [x] **Serving**: Flask API with Prometheus and Kafka integration (`serving/`)
-- [x] **Monitoring**: Prometheus, Grafana, Elasticsearch, Kafka Connect (`monitoring/`, `communication/`)
-- [x] **Auto retraining**: Foundation in place (extendable)
-- [x] **Pipeline**: End-to-end event and metric flow
-
----
-
 ## 📂 Folder Structure
 
 - `modeling/` — Model training, pipeline, and requirements
@@ -91,9 +78,8 @@ graph TD
 ### 1. Clone and Configure
 
 ```bash
-git clone <your-repo-url>
+git clone <this-repo>
 cd model-serving-and-monitoring
-cp .env.example .env  # Edit as needed
 ```
 
 ### 2. Build and Start All Services
@@ -117,10 +103,10 @@ docker-compose up --build
 
 - Start the serving API (already in Docker Compose)
 - Send test requests:
-  ```bash
-  bash scripts/calls.sh "[5.1,3.5,1.4,0.2]" --repetitions=5
-  bash scripts/calls.sh --repetitions=10
-  ```
+
+```bash
+bash scripts/calls.sh --repetitions=10
+```
 
 ---
 
@@ -133,61 +119,50 @@ docker-compose up --build
 
 #### Add Elasticsearch Data Source
 
-1. Go to **Gear (⚙️) > Data Sources**
-2. Click **Add data source** → **Elasticsearch**
+1. Go to **Connections  > Add new connection**
+2. Click  **Elasticsearch**
 3. **URL:** `http://elasticsearch:9200`
-4. **Index name:** `predictions`
-5. **Elasticsearch version:** `8.x`
-6. **Time field name:** `@timestamp`
-7. **Save & Test**
+4. **Authentication: No Authentication**
+5. **Skip TSL certificate validation**
+6. **Index name:** `predictions`
+7. **Time field name:** `@timestamp`
+8. **Save & Test**
 
 #### Add Prometheus Data Source
 
-1. Go to **Gear (⚙️) > Data Sources**
-2. Click **Add data source** → **Prometheus**
+1. Go to  **Connections  > Add new connection**
+2. Click  **Prometheus**
 3. **URL:** `http://prometheus:9090`
-4. **Save & Test**
+4. **Authentication: No Authentication**
+5. **Skip TSL certificate validation**
+6. **Save & Test**
 
-#### Example Panel: Predictions per Category
+#### Example Panel
 
-- Create a new panel
-- **Query:**  
-  - Metric: `Count`
-  - Group by: `prediction_text.Species.keyword` or `prediction_label`
-- Set time range as needed
+Load the dashboard  
 
----
-
-### 🚦 Model Comparison Dashboard (Grafana)
-
-A ready-to-import dashboard is provided at `monitoring/grafana/model_comparison_dashboard.json`.
-
-#### **How to Import**
-1. In Grafana, go to **Dashboards > New > Import**.
-2. Upload or paste the JSON from `monitoring/grafana/model_comparison_dashboard.json`.
-3. Select your Prometheus and Elasticsearch data sources when prompted.
+1. In Grafana, go to **Dashboards > Import**  
+2. Click **Upload JSON file** and select: `monitoring/grafana/model_comparison_dashboard.json`  
+3. When prompted, select your **Prometheus** and **Elasticsearch** data sources  
+4. Click **Import** to load the dashboard
 
 #### **What This Dashboard Shows**
+
 - **Prediction counts** for both models (from Elasticsearch)
 - **Prediction duration, CPU, and memory** for both models (from Prometheus)
 - **Class distribution** for both models (from Elasticsearch)
-- **Agreement table**: Compare predictions for the same request using `event_uuid`
 - **Side-by-side performance and statistics** for production and shadow models
-
-#### **How to Extend**
-- Add panels for accuracy, confusion matrix, or custom agreement logic using `event_uuid` and prediction fields.
-- Use Prometheus queries to create alerts or advanced performance comparisons.
-- Use Elasticsearch queries to analyze model drift, class imbalance, or disagreement rates.
-
----
 
 ## 🛠️ Troubleshooting
 
 - **Grafana Permission Error:**  
+  
   ```bash
   sudo chmod -R 777 ./monitoring/grafana
   ```
+
 - **Check Event Count in Elasticsearch:**  
+  
   ```bash
   bash scripts/check_events.sh
   ```
@@ -197,6 +172,7 @@ A ready-to-import dashboard is provided at `monitoring/grafana/model_comparison_
   The script `scripts/check_events.sh` checks whether there are any prediction events indexed in Elasticsearch. It queries the `predictions` index and prints the number of events found. This is useful for verifying that your pipeline is sending data to Elasticsearch correctly.
   
   Usage:
+  
   ```bash
   bash scripts/check_events.sh
   ```
