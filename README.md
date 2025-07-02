@@ -39,7 +39,6 @@ graph TD
     end
     subgraph Streaming
         Kafka
-        KafkaConnect
         StreamPy
     end
     subgraph Monitoring
