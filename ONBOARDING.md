@@ -56,7 +56,7 @@ Below, each service is explained in detail, including its role, how it connects 
   - **Kafka Connect** and a custom **streaming service** consume these events.
 - **Why:** Decouples event production and consumption, enables real-time analytics and monitoring.
 
-### 5. **Kafka Connect**
+### 5. **Kafka Connect -  use streaming service instead**
 
 - **Role:** Integration tool for moving data between Kafka and other systems.
 - **How it connects:**

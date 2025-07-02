@@ -3,6 +3,8 @@ import json
 from kafka import KafkaConsumer
 from elasticsearch import Elasticsearch
 from kafka.errors import NoBrokersAvailable
+from kafka.admin import KafkaAdminClient, NewTopic
+from kafka.errors import TopicAlreadyExistsError
 import time
 import os
 
@@ -19,6 +21,33 @@ KAFKA_BROKER = os.environ.get('KAFKA_BROKER', 'kafka:9092')
 KAFKA_TOPIC = os.environ.get('KAFKA_TOPIC', 'predictions')
 ELASTICSEARCH_HOST = os.environ.get('ELASTICSEARCH_HOST', 'elasticsearch:9200')
 ES_INDEX = os.environ.get('ES_INDEX', 'predictions')
+
+
+def create_kafka_topic_if_not_exists(broker, topic_name, num_partitions=1, replication_factor=1):
+    """
+    Create a Kafka topic if it doesn't already exist.
+    
+    Args:
+        broker (str): Kafka broker address
+        topic_name (str): Name of the topic to create
+        num_partitions (int): Number of partitions for the topic
+        replication_factor (int): Replication factor for the topic
+    """
+    admin_client = KafkaAdminClient(bootstrap_servers=broker)
+    topic = NewTopic(name=topic_name, num_partitions=num_partitions, replication_factor=replication_factor)
+    try:
+        admin_client.create_topics([topic])
+        logger.info(f"Topic '{topic_name}' created successfully")
+    except TopicAlreadyExistsError:
+        logger.info(f"Topic '{topic_name}' already exists")
+    except Exception as e:
+        logger.error(f"Error creating topic '{topic_name}': {e}")
+    finally:
+        admin_client.close()
+        
+# Ensure the Kafka topic exists before starting the consumer
+create_kafka_topic_if_not_exists(KAFKA_BROKER, KAFKA_TOPIC)
+
 
 # Initialize Kafka consumer with retry logic
 for attempt in range(20):
@@ -56,7 +85,7 @@ except Exception as e:
 
 logger.info(f"Starting to consume messages from Kafka topic '{KAFKA_TOPIC}' and index into Elasticsearch index '{ES_INDEX}'")
 
-# Main event loop
+# Main event loop: consume messages from Kafka and index them into Elasticsearch
 for message in consumer:
     try:
         event = message.value
@@ -66,3 +95,4 @@ for message in consumer:
         logger.info(f"Indexed event into Elasticsearch: {res['result']} (ID: {res['_id']})")
     except Exception as e:
         logger.error(f"Failed to index event: {e}")
+
