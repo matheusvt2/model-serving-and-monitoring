@@ -23,5 +23,5 @@ flowchart TD
     MLF -- "Model Metadata" --> S
     MIN -- "Model Artifacts" --> S
 
-    classDef service fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef service stroke:#333,stroke-width:2px;
     class S,ST,MLF,MIN,PR,GR,ES,K service;

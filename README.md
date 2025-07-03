@@ -47,8 +47,10 @@ graph TD
         Elasticsearch
     end
 
+        Postgres
     Notebook-->|logs model|MLflow
     MLflow-->|stores artifacts|MinIO
+    MLflow-->|stores data|Postgres
     FastAPI-->|loads model|MLflow
     FastAPI-->|sends metrics|Prometheus
     FastAPI-->|sends events|Kafka
