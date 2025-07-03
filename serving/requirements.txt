@@ -1,7 +1,7 @@
-flask==3.1.1
 prometheus-fastapi-instrumentator==7.1.0
 prometheus-client==0.22.1
 kafka-python==2.2.13
+gunicorn==23.0.0
 # for inference
 scikit-learn==1.5.0
 pandas==2.2.2

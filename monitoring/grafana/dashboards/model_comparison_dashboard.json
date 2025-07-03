@@ -565,7 +565,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "group by(model_alias) (model_prediction_memory_bytes{job=\"flask-service\"})",
+          "expr": "group by(model_alias) (model_prediction_memory_bytes{job=\"api-service\"})",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,

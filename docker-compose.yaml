@@ -17,6 +17,7 @@ services:
   #   networks:
   #     - mlnet
 
+  # Database for MlFlow
   db:
     image: postgres:17
     container_name: mlflow_db
@@ -192,7 +193,7 @@ services:
   #   volumes:
   #     - ./communication:/etc/kafka-connect
 
-  # Flask model serving service
+  # FastAPI model serving service
   serving:
     build:
       context: ./serving
@@ -217,6 +218,7 @@ services:
     networks:
       - mlnet
 
+  # Kafka listener for ES sink with custom code
   streaming:
     build:
       context: ./communication
@@ -237,6 +239,7 @@ services:
       - ES_INDEX=${ES_INDEX}
       - LOG_LEVEL=${LOG_LEVEL}
 
+# Network to make all connections possible
 networks:
   mlnet:
     driver: bridge

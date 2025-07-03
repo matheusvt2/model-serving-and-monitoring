@@ -1,14 +1,14 @@
 # Model Serving and Monitoring Platform
 
 A full-stack, containerized machine learning platform for model training, versioning, serving, monitoring, and automated event streaming.  
-This project demonstrates best practices for MLOps using Docker Compose, MLflow, MinIO, Prometheus, Grafana, Kafka, Elasticsearch, and Flask.
+This project demonstrates best practices for MLOps using Docker Compose, MLflow, MinIO, Prometheus, Grafana, Kafka, Elasticsearch, and FastAPI.
 
 ---
 
 ## ✨ Project Overview
 
 - **Model Training & Versioning:** Train and log models with MLflow, storing artifacts in MinIO (S3-compatible).
-- **Model Serving:** Serve predictions via a Flask API, with Prometheus metrics and Kafka event streaming.
+- **Model Serving:** Serve predictions via a Fast API, with Prometheus metrics and Kafka event streaming.
 - **Streaming & Monitoring:** Stream all prediction events to Kafka, persist in Elasticsearch, and visualize in Grafana.
 - **Metrics & Retraining:** Monitor service and model metrics with Prometheus/Grafana; foundation for auto-retraining pipelines.
 
@@ -35,7 +35,7 @@ graph TD
         Notebook
     end
     subgraph Serving
-        FlaskAPI
+        FastAPI
     end
     subgraph Streaming
         Kafka
@@ -49,9 +49,9 @@ graph TD
 
     Notebook-->|logs model|MLflow
     MLflow-->|stores artifacts|MinIO
-    FlaskAPI-->|loads model|MLflow
-    FlaskAPI-->|sends metrics|Prometheus
-    FlaskAPI-->|sends events|Kafka
+    FastAPI-->|loads model|MLflow
+    FastAPI-->|sends metrics|Prometheus
+    FastAPI-->|sends events|Kafka
     Kafka-->|streams events|StreamPy
     StreamPy-->|indexes|Elasticsearch
     Prometheus-->|metrics|Grafana
@@ -64,7 +64,7 @@ graph TD
 
 - `modeling/` — Model training, pipeline, and requirements
 - `versioning/` — MLflow, MinIO, and database storage/config
-- `serving/` — Flask API, Dockerfile, and model loading
+- `serving/` — Fast API, Dockerfile, and model loading
 - `communication/` — Kafka, Kafka Connect, streaming scripts
 - `monitoring/` — Prometheus, Grafana, Elasticsearch configs/data
 - `scripts/` — Utility scripts for testing and monitoring (see below)
